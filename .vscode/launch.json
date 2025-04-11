@@ -9,7 +9,7 @@
             "name": "Debug",
             "program": "${workspaceFolder}/main.lua",
             "type": "node-terminal",
-            "command": "./love-11.5-x86_64.AppImage . && exit"
+            "command": "./love.AppImage . && exit"
         }
     ]
 }
