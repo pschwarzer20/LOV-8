@@ -1,23 +1,41 @@
 
-local curTime = 0
-function CurTime()
-    return curTime
+local function CalculateMemoryUsage()
 end
 
+local function LoadSprite(name)
+    name = "games/" .. name
 
+    local info = love.filesystem.getInfo(name)
+    if (not info) then
+        error("Failed to load Sprite! ("..name..")")
+        return
+    end
 
+    virtual.currentMemory = virtual.currentMemory + info.size
+
+    local newSprite = love.graphics.newImage(name)
+end
+
+-- Establish Sandbox
+-- Everything in the table is what the Sandbox has access to
 local consoleEnv = {
-    Load = function() end,
-    Update = function(dt) end,
-    Draw = function() end,
-    KeyPressed = love.keypressed,
-    KeyDown = love.keyboard.wasPressed,
+    NAME = "NULL",
+    AUTHOR = "NULL",
+    VERSION = 0,
+
+    Load,
+    Update,
+    Draw,
+    KeyPressed,
+
+    Sprite = LoadSprite,
+
     print = love.graphics.print,
 }
 consoleEnv._G = consoleEnv
 setmetatable(consoleEnv, {
     __index = function(_, key)
-        return function(...) end
+        return function(...) end -- Return an empty function to avoid erroring, not perfect, but works most of the time
     end
 })
 
@@ -31,32 +49,42 @@ function loadGame(gameName)
     if not ok then
         error("Error running sandbox file (2): " .. execErr)
     end
+
+    love.window.setTitle(consoleEnv.NAME or "NULL")
 end
 
 
 
 local maxScaling = 4
 function love.load()
-    love.window.setTitle("Fantasy Console")
-    love.graphics.setDefaultFilter("nearest", "nearest")
+    love.window.setTitle("Waiting for Game")
 
-    font = love.graphics.newImageFont("font.png", " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.:;<=>?-+*/)('&%$#ß!@[ß]^_{|}~", -1)
-	--font = love.graphics.newFont("monogram.ttf", 16)
-    --font:setFilter("nearest", "nearest")
-
+    -- Console Variables
+    curTime = 0
     scaling = 4
+    keysPressed = {}
+
+    -- Setup Window
+    love.graphics.setDefaultFilter("nearest", "nearest")
+    font = love.graphics.newImageFont("font.png", " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.:;<=>?-+*/)('&%$#ß!@[ß]^_{|}~", -1)
     love.window.updateWindow()
 
-    love.keyboard.keysPressed = {}
+    -- Create Virtual Console
+    virtual = {
+        maxMemory = 16000,
+        currentMemory = 0,
 
+        loadedSprites = {},
+        loadedSounds = {},
+        loadedFonts = {},
+    }
 
     loadGame("test")
 
 
-    -- Track memory usage using this
-    info = love.filesystem.getInfo( "font.png" )
-
-    print(info.size)
+    if (consoleEnv.Load) then
+        consoleEnv.Load()
+    end
 end
 
 function love.keypressed(key)
@@ -64,15 +92,15 @@ function love.keypressed(key)
         love.event.quit()
     end
 
-    love.keyboard.keysPressed[key] = true
+    keysPressed[key] = true
 
-    if (consoleEnv.WasKeyPressed) then
-        consoleEnv.WasKeyPressed(key)
+    if (consoleEnv.KeyPressed) then
+        consoleEnv.KeyPressed(key)
     end
 end
 
 function love.keyboard.wasPressed(key)
-    return love.keyboard.keysPressed[key]
+    return keysPressed[key]
 end
 
 function love.window.updateWindow()
@@ -92,7 +120,7 @@ function love.update(dt)
         love.window.updateWindow()
     end
 
-    love.keyboard.keysPressed = {}
+    keysPressed = {}
 
     if (consoleEnv.Update) then
         consoleEnv.Update(dt, curTime)
@@ -104,7 +132,7 @@ function love.draw()
 
     love.graphics.setFont(font)
 
-    love.graphics.print("0/32 KB used", 3, 0)
+    love.graphics.print(virtual.currentMemory/1000 .. "/" .. virtual.maxMemory/1000 .. " KB", 2, 2)
     
     if (consoleEnv.Draw) then
         consoleEnv.Draw()

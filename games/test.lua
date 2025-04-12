@@ -1,14 +1,24 @@
 
-local test = 1
+NAME = "Test"
+AUTHOR = "Tarion"
+VERSION = 0
+
+local test = 0
 local delay = 0
 
+function Load()
+end
+
 function Update(dt, curTime)
-    if (curTime > delay) then
-        delay = curTime + 1
+end
+
+function KeyPressed(key)
+    if (key == "f5") then
         test = test + 1
-    end 
+        Sprite("testSprites.png")
+    end
 end
 
 function Draw()
-    print("Counter: " .. test, 10, 10)
+    print("Loaded Sprites: " .. test, 10, 10)
 end
