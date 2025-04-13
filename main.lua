@@ -1,20 +1,57 @@
 
-local function CalculateMemoryUsage()
-end
+require("classes")
 
-local function LoadSprite(name)
-    name = "games/" .. name
+local LoadObject = {
+    ["sprite"] = function(name)
+        name = "games/" .. name
+    
+        local info = love.filesystem.getInfo(name)
+        if (not info) then
+            error("Failed to load Object (FILE NOT FOUND) ("..name..")")
+            return
+        end
+        if ((info.size + virtual.currentMemory) > virtual.maxMemory) then
+            error("Failed to load Object (MAX MEMORY) ("..name..")")
+            return
+        end
 
-    local info = love.filesystem.getInfo(name)
-    if (not info) then
-        error("Failed to load Sprite! ("..name..")")
-        return
-    end
+        local newObject = Sprite.new(name)
 
-    virtual.currentMemory = virtual.currentMemory + info.size
+        virtual.loadedObjects[newObject] = {
+            object = newSprite,
+            size = info.size,
+        }
+        virtual.currentMemory = virtual.currentMemory + info.size
+        virtual.loadedCount = virtual.loadedCount + 1
 
-    local newSprite = love.graphics.newImage(name)
-end
+        return newObject
+    end,
+    ["audio"] = function(name, soundType)
+        name = "games/" .. name
+        soundType = soundType or "static"
+
+        local info = love.filesystem.getInfo(name)
+        if (not info) then
+            error("Failed to load Object (FILE NOT FOUND) ("..name..")")
+            return
+        end
+        if ((info.size + virtual.currentMemory) > virtual.maxMemory) then
+            error("Failed to load Object (MAX MEMORY) ("..name..")")
+            return
+        end
+
+        local newObject = Audio.new(name, soundType)
+
+        virtual.loadedObjects[newObject] = {
+            object = newSprite,
+            size = info.size,
+        }
+        virtual.currentMemory = virtual.currentMemory + info.size
+        virtual.loadedCount = virtual.loadedCount + 1
+
+        return newObject
+    end,
+}
 
 -- Establish Sandbox
 -- Everything in the table is what the Sandbox has access to
@@ -28,7 +65,8 @@ local consoleEnv = {
     Draw,
     KeyPressed,
 
-    Sprite = LoadSprite,
+    Sprite2 = LoadSprite,
+    Sprite = LoadObject["sprite"],
 
     print = love.graphics.print,
 }
@@ -74,9 +112,8 @@ function love.load()
         maxMemory = 16000,
         currentMemory = 0,
 
-        loadedSprites = {},
-        loadedSounds = {},
-        loadedFonts = {},
+        loadedObjects = {},
+        loadedCount = 0,
     }
 
     loadGame("test")
@@ -128,11 +165,12 @@ function love.update(dt)
 end
 
 function love.draw()
+    love.graphics.scale(scaling*0.5, scaling*0.5)
+    love.graphics.print(virtual.currentMemory/1000 .. "/" .. virtual.maxMemory/1000 .. " KB", 2, 2)
+    love.graphics.print("Loaded Objects: " .. virtual.loadedCount, 2, 10)
     love.graphics.scale(scaling, scaling)
 
     love.graphics.setFont(font)
-
-    love.graphics.print(virtual.currentMemory/1000 .. "/" .. virtual.maxMemory/1000 .. " KB", 2, 2)
     
     if (consoleEnv.Draw) then
         consoleEnv.Draw()
