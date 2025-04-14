@@ -3,26 +3,36 @@ NAME = "Test"
 AUTHOR = "Tarion"
 VERSION = 0
 
-local test = 0
-local delay = 0
-
-local last = ""
-
+local backgroundColor = Color(48, 104, 20, 255)
 function Load()
+    SetBackgroundColor(backgroundColor)
 end
 
 function Update(dt, curTime)
 end
 
-local sprite = Sprite("testSprites.png")
+local sprite = Spritesheet("testSprites.json", 16, 16, Color(48, 104, 80, 255))
+local testSound = Sound("testSound.mp3", "static")
+local test = 1
 function KeyPressed(key)
-    if (key == "f5") then
+    if (key == "f3") then
+        test = test - 1
+
+        if (test == 0) then
+            test = sprite.Count
+        end
+    elseif (key == "f4") then
         test = test + 1
-        sprite = Sprite("testSprites.png")
+
+        if (test == sprite.Count + 1) then
+            test = 1
+        end
+    elseif (key == "f2") then
+        testSound:Play()
     end
 end
 
 function Draw()
-    print("Loaded Sprites: " .. test, 10, 10)
-    sprite:Draw(100, 0)
+    DrawText(test .. "/" .. sprite.Count, 25, 25)
+    sprite:Draw(test, 50, 0)
 end

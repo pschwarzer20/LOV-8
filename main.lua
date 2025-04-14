@@ -1,8 +1,15 @@
 
+if arg[2] == "debug" then
+    require("lldebugger").start()
+end
+
+
+json = require("libraries/json")
+
 require("classes")
 
 local LoadObject = {
-    ["sprite"] = function(name)
+    ["sprite"] = function(name, alphaColor)
         name = "games/" .. name
     
         local info = love.filesystem.getInfo(name)
@@ -15,10 +22,10 @@ local LoadObject = {
             return
         end
 
-        local newObject = Sprite.new(name)
+        local newObject = Sprite.new(name, alphaColor)
 
         virtual.loadedObjects[newObject] = {
-            object = newSprite,
+            object = newObject,
             size = info.size,
         }
         virtual.currentMemory = virtual.currentMemory + info.size
@@ -26,7 +33,32 @@ local LoadObject = {
 
         return newObject
     end,
-    ["audio"] = function(name, soundType)
+    ["spritesheet"] = function(name, width, height, alphaColor)
+        name = "games/" .. name
+        height = height or width
+
+        local info = love.filesystem.getInfo(name)
+        if (not info) then
+            error("Failed to load Object (FILE NOT FOUND) ("..name..")")
+            return
+        end
+        if ((info.size + virtual.currentMemory) > virtual.maxMemory) then
+            error("Failed to load Object (MAX MEMORY) ("..name..")")
+            return
+        end
+
+        local newObject = Spritesheet.new(name, width, height, alphaColor)
+
+        virtual.loadedObjects[newObject] = {
+            object = newObject,
+            size = info.size,
+        }
+        virtual.currentMemory = virtual.currentMemory + info.size
+        virtual.loadedCount = virtual.loadedCount + 1
+
+        return newObject
+    end,
+    ["sound"] = function(name, soundType)
         name = "games/" .. name
         soundType = soundType or "static"
 
@@ -40,10 +72,10 @@ local LoadObject = {
             return
         end
 
-        local newObject = Audio.new(name, soundType)
+        local newObject = Sound.new(name, soundType)
 
         virtual.loadedObjects[newObject] = {
-            object = newSprite,
+            object = newObject,
             size = info.size,
         }
         virtual.currentMemory = virtual.currentMemory + info.size
@@ -52,6 +84,10 @@ local LoadObject = {
         return newObject
     end,
 }
+
+local function SetBackgroundColor(color)
+    love.graphics.setBackgroundColor(color)
+end
 
 -- Establish Sandbox
 -- Everything in the table is what the Sandbox has access to
@@ -65,17 +101,18 @@ local consoleEnv = {
     Draw,
     KeyPressed,
 
-    Sprite2 = LoadSprite,
     Sprite = LoadObject["sprite"],
+    Spritesheet = LoadObject["spritesheet"],
+    Sound = LoadObject["sound"],
 
-    print = love.graphics.print,
+    Color = Color,
+
+    SetBackgroundColor = SetBackgroundColor,
+    DrawText = love.graphics.print,
+
+    print = print,
 }
 consoleEnv._G = consoleEnv
-setmetatable(consoleEnv, {
-    __index = function(_, key)
-        return function(...) end -- Return an empty function to avoid erroring, not perfect, but works most of the time
-    end
-})
 
 function loadGame(gameName)
     local fn, err = loadfile("games/" .. gameName .. ".lua", "t", consoleEnv)
@@ -83,9 +120,9 @@ function loadGame(gameName)
         error("Failed to load sandbox file (1): " .. err)
     end
 
-    local ok, execErr = pcall(fn)
+    local ok, execErr = xpcall(fn, debug.traceback)
     if not ok then
-        error("Error running sandbox file (2): " .. execErr)
+        error("Error running sandbox file (2):\n" .. execErr)
     end
 
     love.window.setTitle(consoleEnv.NAME or "NULL")
@@ -100,7 +137,6 @@ function love.load()
     -- Console Variables
     curTime = 0
     scaling = 4
-    keysPressed = {}
 
     -- Setup Window
     love.graphics.setDefaultFilter("nearest", "nearest")
@@ -118,7 +154,6 @@ function love.load()
 
     loadGame("test")
 
-
     if (consoleEnv.Load) then
         consoleEnv.Load()
     end
@@ -128,26 +163,7 @@ function love.keypressed(key)
     if key == "escape" then
         love.event.quit()
     end
-
-    keysPressed[key] = true
-
-    if (consoleEnv.KeyPressed) then
-        consoleEnv.KeyPressed(key)
-    end
-end
-
-function love.keyboard.wasPressed(key)
-    return keysPressed[key]
-end
-
-function love.window.updateWindow()
-    love.window.setMode(scaling*240, scaling*160, {resizable=false, vsync=0})
-end
-
-function love.update(dt)
-    curTime = curTime + dt
-
-    if (love.keyboard.wasPressed("f1")) then
+    if (key == "f1") then
         scaling = scaling + 1
 
         if (scaling == maxScaling+1) then
@@ -157,7 +173,17 @@ function love.update(dt)
         love.window.updateWindow()
     end
 
-    keysPressed = {}
+    if (consoleEnv.KeyPressed) then
+        consoleEnv.KeyPressed(key)
+    end
+end
+
+function love.window.updateWindow()
+    love.window.setMode(scaling*240, scaling*160, {resizable=false, vsync=0})
+end
+
+function love.update(dt)
+    curTime = curTime + dt
 
     if (consoleEnv.Update) then
         consoleEnv.Update(dt, curTime)
@@ -174,5 +200,17 @@ function love.draw()
     
     if (consoleEnv.Draw) then
         consoleEnv.Draw()
+    end
+end
+
+
+
+local love_errorhandler = love.errhand
+
+function love.errorhandler(msg)
+    if lldebugger then
+        error(msg, 2)
+    else
+        return love_errorhandler(msg)
     end
 end
