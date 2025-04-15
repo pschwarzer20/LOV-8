@@ -3,9 +3,11 @@ NAME = "Test"
 AUTHOR = "Tarion"
 VERSION = 0
 
-local backgroundColor = Color(48, 104, 20, 255)
+local backgroundColor = Color(48, 104, 80, 255)
+local colo3r = Color(48, 104, 80, 255)
 function Load()
     SetBackgroundColor(backgroundColor)
+    color = Color(48, 104, 80, 255)
 end
 
 function Update(dt, curTime)
@@ -40,6 +42,8 @@ function KeyPressed(key)
         end
     elseif (key == "f2") then
         testSound:Play()
+        testSound = nil
+        collectgarbage()
     end
 end
 
@@ -47,5 +51,9 @@ function Draw()
     DrawText(test .. "/" .. sprite.Count, 50, 25)
 
     sprite:Draw(test, 5, 25)
-    tileset:Draw(test2, 25, 0)
+    tileset:Draw(test2, 30, 0)
 end
+
+
+-- TODO:
+-- 1. Implement memory limits for code, track how many variables are loaded, based on the size, like int64 and stuff

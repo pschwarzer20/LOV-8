@@ -95,6 +95,7 @@ local consoleEnv = {
     NAME = "NULL",
     AUTHOR = "NULL",
     VERSION = 0,
+    path = "",
 
     Load,
     Update,
@@ -111,11 +112,17 @@ local consoleEnv = {
     DrawText = love.graphics.print,
 
     print = print,
+    collectgarbage = collectgarbage,
+    require = function(name)
+        require(virtual.path .. name)
+    end,
 }
 consoleEnv._G = consoleEnv
 
 function loadGame(gameName)
-    local fn, err = loadfile("games/" .. gameName .. ".lua", "t", consoleEnv)
+    local fn, err = loadfile("games/" .. gameName .. "/main.lua", "t", consoleEnv)
+    virtual.path = "games/" .. gameName .. "/"
+
     if not fn then
         error("Failed to load sandbox file (1): " .. err)
     end
@@ -145,6 +152,8 @@ function love.load()
 
     -- Create Virtual Console
     virtual = {
+        path = "",
+
         maxMemory = 16000,
         currentMemory = 0,
 
@@ -191,9 +200,17 @@ function love.update(dt)
 end
 
 function love.draw()
+    local count = 0
+    for k, v in pairs(consoleEnv) do
+        if (type(v) ~= "function" and v ~= nil) then
+            count = count + 1
+        end
+    end
+
     love.graphics.scale(scaling*0.5, scaling*0.5)
     love.graphics.print(virtual.currentMemory/1000 .. "/" .. virtual.maxMemory/1000 .. " KB", 2, 2)
     love.graphics.print("Loaded Objects: " .. virtual.loadedCount, 2, 10)
+    love.graphics.print("Loaded Variables: " .. count, 2, 18)
     love.graphics.scale(scaling, scaling)
 
     love.graphics.setFont(font)

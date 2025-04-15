@@ -22,6 +22,7 @@ local function newImage(path, alphaColor)
     return image
 end
 
+
 --[[
     Sprite Class
     This is essentially just a Wrapper for LÖVEs Image
@@ -58,16 +59,15 @@ function Spritesheet.new(path, width, height, alphaColor)
 
     if (string.find(path, ".json")) then
         local contents, size = love.filesystem.read(path)
-        local sliceData = json.decode(contents)
+        local metadata = json.decode(contents)
 
-        print("games/" .. sliceData.image)
-        self.image = newImage("games/" .. sliceData.image, alphaColor)
+        self.image = newImage("games/" .. metadata.image, alphaColor)
 
         -- Create the slices according to the sliceData
         local imageWidth, imageHeight = self.image:getWidth(), self.image:getHeight()
 
         local counter = 0
-        for _, data in pairs(sliceData) do
+        for _, data in pairs(metadata.tiles) do
             table.insert(self.sprites, love.graphics.newQuad(
                 data.x,
                 data.y,
